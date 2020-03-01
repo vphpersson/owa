@@ -1,7 +1,9 @@
 from http.cookies import BaseCookie
 from urllib.parse import urlparse, parse_qs
+from time import time
+from typing import Tuple
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientResponse
 from aiohttp.cookiejar import URL
 
 from owa.exceptions import ExpiredPasswordError, ExternalDomainError, IncorrectLoginCredentials, UnknownLoginError, \
@@ -9,7 +11,13 @@ from owa.exceptions import ExpiredPasswordError, ExternalDomainError, IncorrectL
 
 
 # TODO: Might as well return the response, and a response time?
-async def authenticate_session(session: ClientSession, origin: str, username: str, password: str, **kwargs) -> None:
+async def authenticate_session(
+    session: ClientSession,
+    origin: str,
+    username: str,
+    password: str,
+    **kwargs
+) -> Tuple[ClientResponse, float]:
     """
     Attempt to authenticate the provided session to OWA given the provided authentication details.
 
@@ -20,7 +28,8 @@ async def authenticate_session(session: ClientSession, origin: str, username: st
     :param username: The username to authenticate with.
     :param password: The password to authenticate with.
     :param kwargs: Extra options passed to `ClientSession.post`.
-    :return: None
+    :return: The HTTP response to the authenticate request and the amount of time in seconds it took to obtain the
+        response
     """
 
     # Have the logon page response set a session id cookie with the `Set-Cookie` header.
@@ -50,7 +59,9 @@ async def authenticate_session(session: ClientSession, origin: str, username: st
         **kwargs
     )
 
+    start_time: float = time()
     async with session.post(**request_options) as response:
+        request_duration: float = time() - start_time
 
         if 'expiredpassword' in str(response.url):
             raise ExpiredPasswordError(username, password)
@@ -70,3 +81,5 @@ async def authenticate_session(session: ClientSession, origin: str, username: st
 
         if str(response.status).startswith('5') or response.status == 404:
             raise UnknownLoginError
+
+        return response, request_duration
