@@ -10,7 +10,6 @@ from owa.exceptions import ExpiredPasswordError, ExternalDomainError, IncorrectL
     BadReasonError
 
 
-# TODO: Might as well return the response, and a response time?
 async def authenticate_session(
     session: ClientSession,
     origin: str,
@@ -61,7 +60,7 @@ async def authenticate_session(
 
     start_time: float = time()
     async with session.post(**request_options) as response:
-        request_duration: float = time() - start_time
+        response_time: float = time() - start_time
 
         if 'expiredpassword' in str(response.url):
             raise ExpiredPasswordError(username, password)
@@ -82,4 +81,4 @@ async def authenticate_session(
         if str(response.status).startswith('5') or response.status == 404:
             raise UnknownLoginError
 
-        return response, request_duration
+        return response, response_time
