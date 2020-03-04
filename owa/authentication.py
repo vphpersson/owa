@@ -63,22 +63,32 @@ async def authenticate_session(
         response_time: float = time() - start_time
 
         if 'expiredpassword' in str(response.url):
-            raise ExpiredPasswordError(username, password)
+            raise ExpiredPasswordError(username=username, password=password, response_time=response_time)
 
         # TODO: Use `query_attribute_to_value`.
         if 'extDomain' in parse_qs(urlparse(str(response.url)).query):
-            raise ExternalDomainError(username, password)
+            raise ExternalDomainError(username=username, password=password, response_time=response_time)
 
         query_attribute_to_value = parse_qs(response.url.query_string)
         if 'reason' in query_attribute_to_value:
             # TODO: Reconsider safeness.
             reason = int(next(iter(query_attribute_to_value['reason'])))
             if reason == 2:
-                raise IncorrectLoginCredentials(username, password)
+                raise IncorrectLoginCredentials(username=username, password=password, response_time=response_time)
             else:
-                raise BadReasonError(user=username, password=password, reason_number=reason)
+                raise BadReasonError(
+                    username=username,
+                    password=password,
+                    response_time=response_time,
+                    reason_number=reason
+                )
 
         if str(response.status).startswith('5') or response.status == 404:
-            raise UnknownLoginError
+            raise UnknownLoginError(
+                username=username,
+                password=password,
+                response_time=response_time,
+                response=response
+            )
 
         return response, response_time
